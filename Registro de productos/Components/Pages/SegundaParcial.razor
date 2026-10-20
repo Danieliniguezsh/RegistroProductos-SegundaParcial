@@ -1,0 +1,168 @@
+﻿
+@page "/segunda-parcial"
+@rendermode InteractiveServer
+
+<h3>Registro de productos</h3>
+
+<div style="max-width: 800px; margin-top: 20px;">
+    <!-- Campo: No. de inventario -->
+    <div style="margin-bottom: 15px;">
+        <label for="noInventario" style="font-weight: bold; display: block; margin-bottom: 5px;">No. de inventario</label>
+        <input type="number" id="noInventario" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; max-width: 300px;" @bind="inputNoInventario" />
+    </div>
+
+    <!-- Campo: Descripción -->
+    <div style="margin-bottom: 15px;">
+        <label for="descripcion" style="font-weight: bold; display: block; margin-bottom: 5px;">Descripción</label>
+        <input type="text" id="descripcion" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%;" placeholder="Escribe la descripción del producto" @bind="inputDescripcion" />
+    </div>
+
+    <!-- Campo: Departamento -->
+    <div style="margin-bottom: 20px;">
+        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Departamento</label>
+        <label style="margin-right: 15px; cursor: pointer;">
+            <input type="radio" name="deptOptions" id="deptFrutas" value="Frutas"
+                   checked="@(inputDepartamento == "Frutas")" @onchange='() => inputDepartamento = "Frutas"' />
+            Frutas
+        </label>
+        <label style="margin-right: 15px; cursor: pointer;">
+            <input type="radio" name="deptOptions" id="deptVerduras" value="Verduras"
+                   checked="@(inputDepartamento == "Verduras")" @onchange='() => inputDepartamento = "Verduras"' />
+            Verduras
+        </label>
+        <label style="cursor: pointer;">
+            <input type="radio" name="deptOptions" id="deptLacteos" value="Lácteos"
+                   checked="@(inputDepartamento == "Lácteos")" @onchange='() => inputDepartamento = "Lácteos"' />
+            Lácteos
+        </label>
+    </div>
+
+    <!-- Mensaje de Error / Validación -->
+    @if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div style="background-color: #f8d7da; color: #842029; padding: 12px; border-radius: 4px; border: 1px solid #f5c2c7; margin-bottom: 15px;">
+            @mensajeError
+        </div>
+    }
+
+    <!-- Botones de Acción (Estilo Verde) -->
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+        <button style="background-color: #198754; color: white; border: none; padding: 10px 16px; border-radius: 4px; font-weight: 600; cursor: pointer;" @onclick="GuardarDatos">Guardar datos</button>
+        <button style="background-color: #198754; color: white; border: none; padding: 10px 16px; border-radius: 4px; font-weight: 600; cursor: pointer;" @onclick="MostrarListaCompleta">Lista completa</button>
+        <button style="background-color: #198754; color: white; border: none; padding: 10px 16px; border-radius: 4px; font-weight: 600; cursor: pointer;" @onclick='() => FiltrarPorDepartamento("Frutas")'>Lista de frutas</button>
+        <button style="background-color: #198754; color: white; border: none; padding: 10px 16px; border-radius: 4px; font-weight: 600; cursor: pointer;" @onclick='() => FiltrarPorDepartamento("Verduras")'>Lista de verduras</button>
+        <button style="background-color: #198754; color: white; border: none; padding: 10px 16px; border-radius: 4px; font-weight: 600; cursor: pointer;" @onclick='() => FiltrarPorDepartamento("Lácteos")'>Lista de lácteos</button>
+    </div>
+
+    <!-- Tabla de Productos -->
+    @if (mostrarTabla)
+    {
+        <div style="overflow-x: auto; margin-bottom: 15px;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #dee2e6;">
+                <thead>
+                    <tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <th style="padding: 10px; border: 1px solid #dee2e6;">No. Inventario</th>
+                        <th style="padding: 10px; border: 1px solid #dee2e6;">Descripción</th>
+                        <th style="padding: 10px; border: 1px solid #dee2e6;">Departamento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ObtenerIndicesFiltrados().Any())
+                    {
+                        @foreach (int index in ObtenerIndicesFiltrados())
+                        {
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">@listaNoInventario[index]</td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">@listaDescripcion[index]</td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">@listaDepartamento[index]</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="3" style="padding: 15px; text-align: center; color: #6c757d;">No hay productos registrados en esta lista.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Botón para cerrar lista -->
+        <button style="background-color: #198754; color: white; border: none; padding: 10px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; margin-bottom: 20px;" @onclick="CerrarLista">Cerrar lista</button>
+    }
+</div>
+
+@code {
+    private int inputNoInventario = 0;
+    private string inputDescripcion = "";
+    private string inputDepartamento = "Frutas";
+    private string mensajeError = "";
+
+    // TRES LISTAS PARALELAS PRIMITIVAS (SIN CREAR CLASES PERSONALIZADAS)
+    private List<int> listaNoInventario = new List<int>();
+    private List<string> listaDescripcion = new List<string>();
+    private List<string> listaDepartamento = new List<string>();
+
+    private bool mostrarTabla = false;
+    private string filtroDepartamento = "";
+
+    private void GuardarDatos()
+    {
+        mensajeError = "";
+
+        if (inputNoInventario <= 0)
+        {
+            mensajeError = "Por favor, ingrese un número de inventario válido (mayor a 0).";
+            return;
+        }
+
+        if (listaNoInventario.Contains(inputNoInventario))
+        {
+            mensajeError = $"El número de inventario {inputNoInventario} ya existe en el sistema. Debe ser único.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(inputDescripcion))
+        {
+            mensajeError = "La descripción del producto no puede estar vacía.";
+            return;
+        }
+
+        listaNoInventario.Add(inputNoInventario);
+        listaDescripcion.Add(inputDescripcion.Trim());
+        listaDepartamento.Add(inputDepartamento);
+
+        inputNoInventario = 0;
+        inputDescripcion = "";
+        inputDepartamento = "Frutas";
+    }
+
+    private void MostrarListaCompleta()
+    {
+        filtroDepartamento = "";
+        mostrarTabla = true;
+    }
+
+    private void FiltrarPorDepartamento(string departamento)
+    {
+        filtroDepartamento = departamento;
+        mostrarTabla = true;
+    }
+
+    private void CerrarLista()
+    {
+        mostrarTabla = false;
+    }
+
+    private IEnumerable<int> ObtenerIndicesFiltrados()
+    {
+        for (int i = 0; i < listaNoInventario.Count; i++)
+        {
+            if (string.IsNullOrEmpty(filtroDepartamento) || listaDepartamento[i] == filtroDepartamento)
+            {
+                yield return i;
+            }
+        }
+    }
+}
